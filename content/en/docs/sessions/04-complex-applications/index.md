@@ -191,7 +191,7 @@ In this directory, we need to create two files:
 * `Makefile`: containing rules for building the application as well as specifying the libraries that the application needs
 * `Makefile.uk`: used to define variables needed to compile the application or to add application-specific flags
 
-Also, in the `Makefile`, the order in which the libraries are mentioned in the `LIBS` variable is important to avoid the occurrence of compilation errors.
+In the `Makefile`, the order in which the libraries are mentioned in the `LIBS` variable is important to avoid the occurrence of compilation errors.
 
 ```
 UK_ROOT ?= $(PWD)/../../unikraft
@@ -205,6 +205,12 @@ $(MAKECMDGOALS):
 	@$(MAKE) -C $(UK_ROOT) A=$(PWD) L=$(LIBS) $(MAKECMDGOALS)
 ```
 
+For the moment, `Makefile.uk` should look like this:
+
+```
+$(eval $(call addlib,appsqlite))
+```
+
 #### Configure
 
 We configure the application by running:
@@ -213,17 +219,21 @@ We configure the application by running:
 $ make menuconfig
 ```
 
-We select the SQLite library from the configuration menu, `Library Configuration` section.
+We select the `SQLite` library from the configuration menu, `Library Configuration` section.
 For starters, we select the option to generate the main source file used to run the application.
 
 To import or export databases or CSV/SQL files, the SQLite application needs to configure a filesystem.
-The filesystem we use is 9pfs.
+The filesystem we use is `9pfs`.
 Hence, in the `Library Configuration` section, we select the `9pfs` filesystem within the `vfscore` library options.
+
+As we are going to use the qemu wrapper to launch the app, we'll need to name the `Default root device` `fs0` (`Library Configuration` -> `vfscore` -> `Default root device`).
+
+![9pfs options](/docs/sessions/04-complex-applications/images/9pfs_options.png)
 
 Make sure, that both options `Virtio PCI device support` and `Virtio 9P device` are selected.
 Those can be found in: `Platform Configuration` -> `KVM guest` -> `Virtio`.
 
-![9pfs options](/docs/sessions/04-complex-applications/images/9pfs_options.png)
+![virtio options](/docs/sessions/04-complex-applications/images/virtio_options.png)
 
 #### Build
 
@@ -272,7 +282,7 @@ And in the end, we run `select * from tab` to see the contents of the table.
 If everything runs as expected, then we'll see the following output:
 
 ```
-SeaBIOS (version 1.10.2-1ubuntu1)
+SeaBIOS (version 1.13.0-1ubuntu1.1)
 Booting from ROM...
 Powered by
 o.   .o       _ _               __ _
@@ -280,28 +290,28 @@ Oo   Oo  ___ (_) | __ __  __ _ ' _) :_
 oO   oO ' _ `| | |/ /  _)' _` | |_|  _)
 oOo oOO| | | | |   (| | | (_) |  _) :_
  OoOoO ._, ._:_:_,\_._,  .__,_:_, \___)
-                   Tethys 0.5.0~825b115
+                  Phoebe 0.10.0~9bf6e63
 SQLite version 3.30.1 2019-10-10 20:19:45
 Enter ".help" for usage hints.
 sqlite> .read script.sql
 sqlite> select * from tab;
--4482895989777805454|-110319092326802521
-1731384004930241734|4521105937488475129
-394829130239418471|-5931220326625632549
-4715172377251814631|3421393665393635031
-2633802986882468389|174376437407985264
--1691186051150364618|3056262814461654943
--4054754806183404125|-2391909815601847844
--4437812378917371546|-6267837926735068846
-8830824471222267926|7672933566995619644
-4185269687730257244|-3477150175417807640
-sqlite>
+-1758847760864160102|2718837905630364326
+-1339730570270182734|-413022835704168293
+899003099627700560|-5446400296487656477
+3986823405912376844|-3683968660549484071
+5750141151993138490|-949527979363852620
+2608659443316808689|3543024197312456352
+-2195896775588749426|6838623081517951948
+8293933456345343304|6460961935619776014
+6827842764477913763|7025795551657688644
+4026439721321663478|8364502757469924828
+sqlite> .exit
 ```
 
 ### 02. SQLite New Filesystem (Tutorial)
 
 In the previous work item, we have chosen to use 9PFS as the filesystem.
-For this work item, we want to change the filesystem to RamFS and load the SQLlite script as we have done in the previous work item.
+For this work item, we want to change the filesystem to InitRD and load the SQLlite script as we have done in the previous work item.
 Find the support files in the `work/02-change-filesystem-sqlite/` folder of the session directory.
 
 First, we need to change the filesystem to InitRD.
@@ -309,7 +319,7 @@ We can obtain that by using the command `make menuconfig` and from the `vfscore:
 
 ![filesystems menu](/docs/sessions/04-complex-applications/images/filesystems.png)
 
-The InitRD filesystem can load only [cpio archives](https://www.ibm.com/docs/en/zos/2.2.0?topic=formats-cpio-format-cpio-archives), so to load our SQLite script into RamFS filesystem, we need to create a cpio out of it.
+The InitRD filesystem can load only [cpio archives](https://www.ibm.com/docs/en/zos/2.2.0?topic=formats-cpio-format-cpio-archives), so to load our SQLite script into InitRD filesystem, we need to create a cpio out of it.
 This can be achieved the following way: Create a folder, move the SQLite script in it, and `cd `in it.
 After that we run the following command:
 
@@ -328,7 +338,7 @@ $ ./qemu-guest -k build/app-sqlite_kvm-x86_64 -m 100 -i archive.cpio
 If everything runs as expected, then we'll see the following output:
 
 ```
-SeaBIOS (version 1.10.2-1ubuntu1)
+SeaBIOS (version 1.13.0-1ubuntu1.1)
 Booting from ROM...
 Powered by
 o.   .o       _ _               __ _
@@ -336,22 +346,22 @@ Oo   Oo  ___ (_) | __ __  __ _ ' _) :_
 oO   oO ' _ `| | |/ /  _)' _` | |_|  _)
 oOo oOO| | | | |   (| | | (_) |  _) :_
  OoOoO ._, ._:_:_,\_._,  .__,_:_, \___)
-                   Tethys 0.5.0~825b115
+                  Phoebe 0.10.0~9bf6e63
 SQLite version 3.30.1 2019-10-10 20:19:45
 Enter ".help" for usage hints.
 sqlite> .read script.sql
 sqlite> select * from tab;
--4482895989777805454|-110319092326802521
-1731384004930241734|4521105937488475129
-394829130239418471|-5931220326625632549
-4715172377251814631|3421393665393635031
-2633802986882468389|174376437407985264
--1691186051150364618|3056262814461654943
--4054754806183404125|-2391909815601847844
--4437812378917371546|-6267837926735068846
-8830824471222267926|7672933566995619644
-4185269687730257244|-3477150175417807640
-sqlite>
+-2854471077348014330|8890688652355553061
+6848326607576863720|8057668357382476232
+-4851485256049611772|1080284340194216118
+3617801119133923790|-3742008368926465716
+-8000990739986823138|603753214333179605
+-1492560099439825568|-8062818652230049204
+8818728981714743313|-1714591670076544373
+-1304043959596685652|557566099797623154
+-9196798118140052834|3433881783117867716
+-4291436294037928857|6810153594571143752
+sqlite> .exit
 ```
 
 ### 03. Redis (Tutorial)
@@ -378,7 +388,7 @@ workdir
 ```
 
 We clone the [lib-redis](https://github.com/unikraft/lib-redis) repository in the `libs/` folder.
-We alsoe clonethe library repositories which [lib-redis](https://github.com/unikraft/lib-redis) depends on ([pthread-embedded]([pthread-embedded](https://github.com/unikraft/lib-pthread-embedded), [newlib](https://github.com/unikraft/lib-newlib) and [lwip](https://github.com/unikraft/lib-lwip)) in the `libs/` folder.
+We also clone the library repositories which [lib-redis](https://github.com/unikraft/lib-redis) depends on ([pthread-embedded](https://github.com/unikraft/lib-pthread-embedded), [newlib](https://github.com/unikraft/lib-newlib) and [lwip](https://github.com/unikraft/lib-lwip)) in the `libs/` folder.
 
 We clone the [app-redis](https://github.com/unikraft/app-redis/) repository in the `apps/` folder.
 In this directory, we need to create two files:
@@ -386,7 +396,7 @@ In this directory, we need to create two files:
 * `Makefile`: it contains rules for building the application as well as specifying the libraries that the application needs
 * `Makefile.uk`: used to define variables needed to compile the application or to add application-specific flags
 
-Also, in the `Makefile`, the order in which the libraries are mentioned in the `LIBS` variable is important to avoid the occurrence of compilation errors.
+In the `Makefile`, the order in which the libraries are mentioned in the `LIBS` variable is important to avoid the occurrence of compilation errors.
 
 ```
 UK_ROOT ?= $(PWD)/../../unikraft
@@ -398,6 +408,12 @@ all:
 
 $(MAKECMDGOALS):
 	@$(MAKE) -C $(UK_ROOT) A=$(PWD) L=$(LIBS) $(MAKECMDGOALS)
+```
+
+For the moment, `Makefile.uk` should look like this:
+
+```
+$(eval $(call addlib,appredis))
 ```
 
 #### Configure
@@ -412,16 +428,6 @@ We select  the Redis library from the configuration menu, `Library Configuration
 For starters, we select the option to generate the main source file used to run the application.
 
 ![redis selection menu](/docs/sessions/04-complex-applications/images/redis_menu.png)
-
-#### Build
-
-We build the application by running:
-
-```
-$ make
-```
-
-#### Test
 
 To connect to the Redis server, the network features should be configured.
 Hence, in the configuration menu in the `Library Configuration` section, within the `lwip library` the following options should be selected:
@@ -440,24 +446,36 @@ Thus, a filesystem should be selected in Unikraft.
 The filesystem we used was 9PFS.
 So, in the `Library Configuration` section of the configuration menu, the following selection chain should be made in the vfscore library: `VFSCore Interface` -> `vfscore Configuration` -> `Automatically mount a root filesystem` -> `Default root filesystem` -> `9PFS`.
 
-Therefore, following the steps above, the build of the entire system, together with the Redis application will be successful.
+Nevertheless, don't forget to select the `posix-event` library: `Library Configuration` -> `posix-event`.
+
+#### Build
+
+We build the application by running:
+
+```
+$ make
+```
+
+#### Test
+
+Following the steps above, the build of the entire system, together with the Redis application will be successful.
 We used a script to run the application in which a bridge and a network interface (`kraft0`) are created.
 The network interface has an IP associated with it used by clients to connect to the Redis server.
 Also, the script takes care of starting the Redis server, but also of stopping it, deleting the settings created for the network.
 
 ```
-brctl addbr kraft0
-ifconfig kraft0 172.44.0.1
-ifconfig kraft0 up
+sudo brctl addbr kraft0
+sudo ifconfig kraft0 172.44.0.1
+sudo ifconfig kraft0 up
 
-dnsmasq -d \
-        --log-queries \
-        --bind-dynamic \
-        --interface=kraft0 \
-        --listen-addr=172.44.0.1 \
-        --dhcp-range=172.44.0.2,172.44.0.254,255.255.255.0,12h &> $WORKDIR/dnsmasq.log &
+sudo dnsmasq -d \
+             -log-queries \
+             --bind-dynamic \
+             --interface=kraft0 \
+             --listen-addr=172.44.0.1 \
+             --dhcp-range=172.44.0.2,172.44.0.254,255.255.255.0,12h &> dnsmasq.logs &
 
-./qemu-guest.sh -k ./build/redis_kvm-x86_64 \
+./qemu-guest.sh -k ./build/app-redis_kvm-x86_64 \
                 -a "/redis.conf" \
                 -b kraft0 \
                 -e ./redis_files
@@ -479,16 +497,66 @@ The following image is presenting an overview of our setup:
 Consequently, after running the script the Redis server will start and dnsmasq will dynamically assign an IP address.
 The IP can be seen in the output of qemu as bellow:
 
-![redis ip](/docs/sessions/04-complex-applications/images/redis_ip.png)
+```
+Booting from ROM...
+en1: Added
+en1: Interface is up
+Powered by
+o.   .o       _ _               __ _
+Oo   Oo  ___ (_) | __ __  __ _ ' _) :_
+oO   oO ' _ `| | |/ /  _)' _` | |_|  _)
+oOo oOO| | | | |   (| | | (_) |  _) :_
+ OoOoO ._, ._:_:_,\_._,  .__,_:_, \___)
+                  Phoebe 0.10.0~9bf6e63
+1:C 27 Aug 2022 12:37:07.023 # oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+1:C 27 Aug 2022 12:37:07.026 # Redis version=5.0.6, bits=64, commit=c5ee3442, modified=1, pid=1, just started
+1:C 27 Aug 2022 12:37:07.031 # Configuration loaded
+1:M 27 Aug 2022 12:37:07.049 * Increased maximum number of open files to 10032 (it was originally set to 1024).
+                _._                                                  
+           _.-``__ ''-._                                             
+      _.-``    `.  `_.  ''-._           Redis 5.0.6 (c5ee3442/1) 64 bit
+  .-`` .-```.  ```\/    _.,_ ''-._                                   
+ (    '      ,       .-`  | `,    )     Running in standalone mode
+ |`-._`-...-` __...-.``-._|'` _.-'|     Port: 6379
+ |    `-._   `._    /     _.-'    |     PID: 1
+  `-._    `-._  `-./  _.-'    _.-'                                   
+ |`-._`-._    `-.__.-'    _.-'_.-'|                                  
+ |    `-._`-._        _.-'_.-'    |           http://redis.io        
+  `-._    `-._`-.__.-'_.-'    _.-'                                   
+ |`-._`-._    `-.__.-'    _.-'_.-'|                                  
+ |    `-._`-._        _.-'_.-'    |                                  
+  `-._    `-._`-.__.-'_.-'    _.-'                                   
+      `-._    `-.__.-'    _.-'                                       
+          `-._        _.-'                                           
+              `-.__.-'                                               
+
+1:M 27 Aug 2022 12:37:07.090 # Server initialized
+1:M 27 Aug 2022 12:37:07.092 * Ready to accept connections
+en1: Set IPv4 address 172.44.0.242 mask 255.255.255.0 gw 172.44.0.1
+```
+
+Another way of inspecting the received IP is through the `dnsmasq.logs` file:
+
+```
+$ cat dnsmasq.logs 
+[...]
+dnsmasq-dhcp: DHCPOFFER(kraft0) 172.44.0.242 52:54:00:20:37:c1 
+dnsmasq-dhcp: DHCPDISCOVER(kraft0) 52:54:00:20:37:c1 
+dnsmasq-dhcp: DHCPOFFER(kraft0) 172.44.0.242 52:54:00:20:37:c1 
+dnsmasq-dhcp: DHCPREQUEST(kraft0) 172.44.0.242 52:54:00:20:37:c1 
+dnsmasq-dhcp: DHCPACK(kraft0) 172.44.0.242 52:54:00:20:37:c1 
+```
 
 Using the received IP, it will be possible to connect clients to it using `redis-cli` (the binary `redis-cli` is the folder for this work item):
 
 ```
-$ ./redis-cli -h 172.88.0.76 -p 6379
-172.88.0.2:6379> PING
+$ ./redis-cli -h 172.44.0.242 -p 6379
+172.44.0.242:6379> PING
 PONG
-172.88.0.2:6379>
+172.44.0.242:6379>
 ```
+
+Nevertheless, after completing this task, you will need to check that the `dnsmasq` process is not running anymore, as it messes up your other connections.
 
 ### 04. Redis Static IP Address
 
@@ -502,23 +570,23 @@ You can use `redis-cli`, found in the suport folder to test your changes.
 If everything runs as expected you should see the following output:
 
 ```
-$ ./redis-cli -h 172.88.0.76 -p 6379
+$ ./redis-cli -h 172.88.0.2 -p 6379
 172.88.0.2:6379> PING
 PONG
-172.88.0.2:6379>
+172.88.0.2:6379> 
 ```
 
 ### 05. Redis Benchmarking (Tutorial)
 
 We aim to do benchmarking for the Redis app running on top of Unikraft and for the Redis running on top of Linux.
 Find the support files in the `work/05-benchmark-redis/` folder of the session directory.
-There are three binaries: `redis-cli`, `redis-benchmark`, and `redis`.
+There are three binaries: `redis-cli`, `redis-benchmark`, and `redis-server`.
 
 First, we will start by benchmarking `redis app`, running on Unikraft.
 Start the Redis on the top of Unikraft as we have already done at above and in another terminal run the following command:
 
 ```
-$ ./redis-benchmark --csv -q -r 100 -n 10000 -c 1 -h 172.44.0.76 -p 6379 -P 8 -t set,get
+$ ./redis-benchmark --csv -q -r 100 -n 10000 -c 1 -h 172.88.0.2 -p 6379 -P 8 -t set,get
 ```
 
 The description of the used option can be seen here:
@@ -540,8 +608,8 @@ Usage: redis-benchmark [-h <host>] [-p <port>] [-c <clients>] [-n <requests>] [-
 If everything runs as expected, you'll see the following output:
 
 ```
-"SET","147058.81"
-"GET","153846.16"
+"SET","85470.09"
+"GET","83333.34"
 ```
 
 The printed values represent `requests/second` for the operation `set` and `get`.
@@ -637,4 +705,4 @@ TCP window size: 85.0 KByte (default)
 
 ### 08. Give Us Feedback
 
-We want to know how to make the next sessions better. For this we need your [feedback](https://forms.gle/QyvxBx19cK4fUYRS7). Thank you!
+We want to know how to make the next sessions better. For this we need your [feedback](https://forms.gle/LyiK2UrnuQu3U6j79). Thank you!
